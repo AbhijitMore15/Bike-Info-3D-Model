@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bike Info — Premium Explorer</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-light: #60a5fa;
+      --glass: rgba(255, 255, 255, 0.2);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      --radius: 16px;
+      --transition: all 0.3s ease;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 16px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #1a1a2e;
+      --card: #2d2d44;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --glass: rgba(255, 255, 255, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text); transition: var(--transition); }
+    .wrap { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+
+    header {
+      display: flex; align-items: center; gap: 20px; padding: 20px;
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .logo {
+      width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: #fff;
+      transition: var(--transition);
+    }
+    .logo:hover { transform: scale(1.05); }
+    h1 { font-size: 24px; font-weight: 800; }
+    p.lead { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+    .theme-toggle {
+      background: none; border: none; cursor: pointer; font-size: 20px; color: var(--text);
+      transition: var(--transition);
+    }
+    .theme-toggle:hover { color: var(--accent); }
+
+    .layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; margin-top: 24px; }
+
+    .sidebar {
+      background: var(--card); border-radius: var(--radius); padding: 24px;
+      box-shadow: var(--shadow); position: sticky; top: 20px; height: fit-content;
+    }
+    .section-title { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+    .categories { display: flex; flex-direction: column; gap: 10px; }
+    .cat-btn {
+      background: var(--glass); border: none; padding: 12px 16px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; transition: var(--transition);
+    }
+    .cat-btn:hover { background: var(--accent); color: #fff; }
+    .cat-btn.active { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+    .brand-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .brand {
+      padding: 10px 14px; border-radius: 10px; background: var(--glass); font-size: 14px;
+      font-weight: 600; cursor: pointer; transition: var(--transition);
+    }
+    .brand:hover { background: var(--accent-light); color: #fff; }
+    .brand.active { background: var(--accent); color: #fff; }
+
+    .year-range { display: flex; gap: 10px; align-items: center; }
+    .year-range input { flex: 1; accent-color: var(--accent); }
+    .year-value { font-weight: 700; font-size: 14px; width: 50px; text-align: right; }
+
+    .main { display: flex; flex-direction: column; gap: 20px; }
+    .controls { display: flex; align-items: center; gap: 16px; }
+    .search {
+      flex: 1; padding: 12px; border: none; border-radius: 10px; background: var(--card);
+      box-shadow: var(--shadow); font-size: 14px; transition: var(--transition);
+    }
+    .search:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-light); }
+    .years { font-size: 14px; color: var(--muted); }
+    .years small { margin-left: 8px; }
+
+    .models {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;
+      opacity: 0; animation: fadeIn 0.5s ease forwards;
+    }
+    .card {
+      background: var(--card); padding: 16px; border-radius: var(--radius);
+      box-shadow: var(--shadow); cursor: pointer; transition: var(--transition);
+      transform: translateY(20px); opacity: 0; animation: slideUp 0.5s ease forwards;
+      animation-delay: calc(var(--index) * 0.1s);
+    }
+    .card:hover { transform: translateY(-8px); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15); }
+    .model-year { font-size: 12px; color: var(--muted); }
+    .model-name { font-size: 16px; font-weight: 700; margin-top: 8px; }
+
+    .detail {
+      display: grid; grid-template-columns: 500px 1fr; gap: 24px; margin-top: 20px;
+      opacity: 0; animation: fadeIn 0.5s ease forwards;
+    }
+    .viewer {
+      background: linear-gradient(135deg, var(--card), var(--bg)); border-radius: var(--radius);
+      padding: 16px; min-height: 350px; box-shadow: var(--shadow); position: relative;
+    }
+    model-viewer { width: 100%; height: 320px; border-radius: 12px; background: var(--bg); }
+    .viewer.loading::after {
+      content: 'Loading 3D Model...'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: var(--muted); font-size: 14px;
+    }
+    .diagram { margin-top: 12px; }
+    svg { width: 100%; height: 200px; }
+    .hotspot {
+      fill: transparent; stroke: transparent; cursor: pointer; transition: var(--transition);
+    }
+    .hotspot:hover { fill: var(--accent-light); stroke: var(--accent); stroke-width: 2; }
+    .info-panel {
+      background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+    }
+    .slide {
+      border-radius: 12px; background: var(--glass); padding: 16px; transition: var(--transition);
+      transform: translateY(20px); opacity: 0;
+    }
+    .slide.visible { transform: translateY(0); opacity: 1; }
+    .specs { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+    .issues { margin-top: 16px; }
+    .issue {
+      background: var(--glass); padding: 12px; border-radius: 10px; margin-bottom: 10px;
+      transition: var(--transition);
+    }
+    .issue:hover { background: var(--accent-light); color: #fff; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      .detail { grid-template-columns: 1fr; }
+      .viewer { order: 2; }
+      .sidebar { position: static; }
+    }
+  </style>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">BI</div>
+      <div>
+        <h1>Bike Info — Premium Explorer</h1>
+        <p class="lead">Explore motorcycles with a sleek, interactive interface. Try Hero → Splendor.</p>
+      </div>
+      <button class="theme-toggle" aria-label="Toggle theme">🌙</button>
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="section-title">Category</div>
+        <div class="categories" id="categories"></div>
+        <div class="section-title" style="margin-top: 16px;">Brands</div>
+        <div class="brand-grid" id="brands"></div>
+        <div class="section-title" style="margin-top: 16px;">Year Range</div>
+        <div class="year-range">
+          <input id="yearRange" type="range" min="2015" max="2025" value="2019" />
+          <div class="year-value"><span id="yr">2019</span></div>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="controls">
+          <input id="search" class="search" placeholder="Search model (e.g., Splendor)" />
+          <div class="years">Filter: <small id="count">0 results</small></div>
+        </div>
+        <div class="models" id="models"></div>
+        <div id="detailWrap" class="detail" style="display: none;">
+          <div class="viewer" id="viewer">
+            <model-viewer id="mv" alt="Bike 3D Model" src="/models/splendor.glb" camera-controls ar ar-modes="webxr scene-viewer quick-look" exposure="1"></model-viewer>
+            <div class="diagram">
+              <svg viewBox="0 0 800 200" preserveAspectRatio="xMidYMid meet">
+                <rect x="6" y="6" width="788" height="188" rx="12" fill="var(--bg)" />
+                <circle cx="180" cy="100" r="32" fill="var(--card)" stroke="var(--accent-light)" stroke-width="2" />
+                <rect x="300" y="70" width="160" height="60" rx="8" fill="var(--card)" stroke="var(--accent-light)" stroke-width="2" />
+                <ellipse cx="620" cy="100" rx="50" ry="32" fill="var(--card)" stroke="var(--accent-light)" stroke-width="2" />
+                <circle class="hotspot" id="hp-engine" cx="180" cy="100" r="40" data-part="Engine"></circle>
+                <rect class="hotspot" id="hp-chassis" x="300" y="70" width="160" height="60" data-part="Chassis"></rect>
+                <ellipse class="hotspot" id="hp-light" cx="620" cy="100" rx="50" ry="32" data-part="Lights"></ellipse>
+                <text x="180" y="145" text-anchor="middle" style="font-size: 14px; fill: var(--text);">Engine</text>
+                <text x="380" y="150" text-anchor="middle" style="font-size: 14px; fill: var(--text);">Chassis</text>
+                <text x="620" y="145" text-anchor="middle" style="font-size: 14px; fill: var(--text);">Lights</text>
+              </svg>
+            </div>
+          </div>
+          <div class="info-panel">
+            <div id="specSlide" class="slide">
+              <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                  <div style="font-weight: 800; font-size: 18px;" id="mName">Hero Splendor (2019)</div>
+                  <div class="model-year" id="mTag">Commuter · Hero</div>
+                </div>
+                <div style="font-weight: 700; color: var(--accent);">Mileage: <span id="mileage">65 kmpl</span></div>
+              </div>
+              <div class="specs" style="margin-top: 12px;">
+                <div><strong>Engine:</strong> <span id="engineSpec">97.2 cc, Air-cooled, Single Cylinder</span></div>
+                <div><strong>Power:</strong> <span id="powerSpec">8.02 PS @ 8000 rpm</span></div>
+                <div><strong>Weight:</strong> <span id="weightSpec">112 kg</span></div>
+              </div>
+            </div>
+            <div class="issues">
+              <div style="font-weight: 700; margin-bottom: 12px;">Common Problems & Fixes</div>
+              <div id="issuesList"></div>
+            </div>
+            <div style="margin-top: 16px; font-size: 14px; color: var(--muted);">
+              Click diagram hotspots to explore parts. Select a model card for details. 3D models are placeholders.
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script>
+    // Sample data
+    const DATA = [
+      {
+        id: 1,
+        category: 'Commuter',
+        brand: 'Hero',
+        name: 'Splendor',
+        year: 2019,
+        mileage: '65 kmpl',
+        engine: '97.2 cc, Air-cooled, Single Cylinder',
+        power: '8.02 PS @ 8000 rpm',
+        weight: '112 kg',
+        model3D: '/models/splendor.glb',
+        parts: [
+          { name: 'Engine', desc: 'Single cylinder 4-stroke engine. Powers the bike efficiently.' },
+          { name: 'Chassis', desc: 'Tubular frame providing structural support.' },
+          { name: 'Lights', desc: 'Headlight and tail light for visibility.' }
+        ],
+        issues: [
+          { title: 'Hard cold start', fix: 'Check spark plug and carb settings; replace if needed.' },
+          { title: 'Chain noise', fix: 'Clean and lubricate chain; adjust tension.' }
+        ]
+      },
+      {
+        id: 2,
+        category: 'Roadster',
+        brand: 'Yamaha',
+        name: 'FZ',
+        year: 2018,
+        mileage: '45 kmpl',
+        engine: '149 cc',
+        power: '13.2 PS',
+        weight: '135 kg',
+        model3D: '/models/fz.glb',
+        parts: [],
+        issues: []
+      },
+      {
+        id: 3,
+        category: 'Sports',
+        brand: 'Yamaha',
+        name: 'R15',
+        year: 2021,
+        mileage: '40 kmpl',
+        engine: '155 cc',
+        power: '18.4 PS',
+        weight: '142 kg',
+        model3D: '/models/r15.glb',
+        parts: [],
+        issues: []
+      },
+      {
+        id: 4,
+        category: 'Commuter',
+        brand: 'Honda',
+        name: 'CB Shine',
+        year: 2017,
+        mileage: '60 kmpl',
+        engine: '124 cc',
+        power: '10.5 PS',
+        weight: '125 kg',
+        model3D: '/models/cbshine.glb',
+        parts: [],
+        issues: []
+      }
+    ];
+
+    // DOM elements
+    const elements = {
+      categories: document.getElementById('categories'),
+      brands: document.getElementById('brands'),
+      models: document.getElementById('models'),
+      yearRange: document.getElementById('yearRange'),
+      yr: document.getElementById('yr'),
+      count: document.getElementById('count'),
+      search: document.getElementById('search'),
+      detailWrap: document.getElementById('detailWrap'),
+      specSlide: document.getElementById('specSlide'),
+      mName: document.getElementById('mName'),
+      mTag: document.getElementById('mTag'),
+      mileage: document.getElementById('mileage'),
+      engineSpec: document.getElementById('engineSpec'),
+      powerSpec: document.getElementById('powerSpec'),
+      weightSpec: document.getElementById('weightSpec'),
+      issuesList: document.getElementById('issuesList'),
+      mv: document.getElementById('mv'),
+      viewer: document.getElementById('viewer'),
+      themeToggle: document.querySelector('.theme-toggle')
+    };
+
+    let state = { category: null, brand: null, year: parseInt(elements.yearRange.value), query: '', selected: null };
+
+    // Utility to escape HTML
+    function escapeHTML(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Debounce function
+    function debounce(fn, ms) {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), ms);
+      };
+    }
+
+    // Get unique values
+    function unique(arr, key) {
+      return [...new Set(arr.map(x => x[key]))];
+    }
+
+    // Render categories
+    function renderCategories() {
+      const cats = unique(DATA, 'category');
+      elements.categories.innerHTML = '';
+      cats.forEach(c => {
+        const b = document.createElement('button');
+        b.className = `cat-btn${state.category === c ? ' active' : ''}`;
+        b.textContent = c;
+        b.onclick = () => {
+          state.category = state.category === c ? null : c; // Toggle category
+          state.brand = null; // Reset brand when category changes
+          render();
+        };
+        elements.categories.appendChild(b);
+      });
+    }
+
+    // Render brands
+    function renderBrands() {
+      const brands = unique(
+        DATA.filter(d => state.category ? d.category === state.category : true),
+        'brand'
+      );
+      elements.brands.innerHTML = '';
+      brands.forEach(bn => {
+        const el = document.createElement('div');
+        el.className = `brand${state.brand === bn ? ' active' : ''}`;
+        el.textContent = bn;
+        el.onclick = () => {
+          state.brand = state.brand === bn ? null : bn; // Toggle brand
+          renderModels();
+        };
+        elements.brands.appendChild(el);
+      });
+    }
+
+    // Render models
+    function renderModels() {
+      const list = DATA.filter(d => {
+        if (state.category && d.category !== state.category) return false;
+        if (state.brand && d.brand !== state.brand) return false;
+        if (state.year && d.year !== state.year) return false;
+        if (state.query && !d.name.toLowerCase().includes(state.query.toLowerCase())) return false;
+        return true;
+      });
+      elements.models.innerHTML = list.length ? '' : '<div style="color: var(--muted); text-align: center;">No models found</div>';
+      elements.count.textContent = `${list.length} results`;
+      list.forEach((m, index) => {
+        const c = document.createElement('div');
+        c.className = 'card';
+        c.style.setProperty('--index', index);
+        c.innerHTML = `
+          <div class="model-year">${escapeHTML(m.brand)} · ${escapeHTML(m.year)}</div>
+          <div class="model-name">${escapeHTML(m.name)}</div>
+        `;
+        c.onclick = () => openDetail(m);
+        elements.models.appendChild(c);
+      });
+    }
+
+    // Open detail panel
+    function openDetail(m) {
+      state.selected = m;
+      elements.detailWrap.style.display = 'grid';
+      elements.mName.textContent = `${escapeHTML(m.brand)} ${escapeHTML(m.name)} (${escapeHTML(m.year)})`;
+      elements.mTag.textContent = `${escapeHTML(m.category)} · ${escapeHTML(m.brand)}`;
+      elements.mileage.textContent = escapeHTML(m.mileage || 'N/A');
+      elements.engineSpec.textContent = escapeHTML(m.engine || 'N/A');
+      elements.powerSpec.textContent = escapeHTML(m.power || 'N/A');
+      elements.weightSpec.textContent = escapeHTML(m.weight || 'N/A');
+
+      // Update 3D model
+      elements.viewer.classList.add('loading');
+      if (m.model3D) {
+        elements.mv.setAttribute('src', m.model3D);
+        elements.mv.addEventListener('load', () => elements.viewer.classList.remove('loading'), { once: true });
+        elements.mv.addEventListener('error', () => {
+          elements.mv.innerHTML = '<div style="text-align: center; color: var(--muted);">Failed to load 3D model</div>';
+         (elements.viewer.classList.remove('loading'));
+        }, { once: true });
+      } else {
+        elements.mv.removeAttribute('src');
+        elements.mv.innerHTML = '<div style="text-align: center; color: var(--muted);">No 3D model available</div>';
+        elements.viewer.classList.remove('loading');
+      }
+
+      // Populate issues
+      elements.issuesList.innerHTML = '';
+      (m.issues || []).forEach(i => {
+        const d = document.createElement('div');
+        d.className = 'issue';
+        d.innerHTML = `<strong>${escapeHTML(i.title)}</strong><div style="margin-top: 6px;">Fix: ${escapeHTML(i.fix)}</div>`;
+        elements.issuesList.appendChild(d);
+      });
+
+      // Show slide
+      setTimeout(() => elements.specSlide.classList.add('visible'), 100);
+    }
+
+    // Show part info
+    function showPartInfo(part) {
+      const m = state.selected;
+      if (!m) return;
+      const info = (m.parts || []).find(p => p.name === part);
+      elements.specSlide.classList.remove('visible');
+      setTimeout(() => {
+        if (info) {
+          elements.specSlide.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+              <div>
+                <div style="font-weight: 800; font-size: 18px;">${escapeHTML(m.brand)} ${escapeHTML(m.name)} (${escapeHTML(m.year)})</div>
+                <div class="model-year">${escapeHTML(part)}</div>
+              </div>
+              <div style="font-weight: 700; color: var(--accent);">Mileage: <span>${escapeHTML(m.mileage || 'N/A')}</span></div>
+            </div>
+            <div style="margin-top: 12px; font-size: 14px;">${escapeHTML(info.desc)}</div>
+          `;
+        } else {
+          elements.specSlide.innerHTML = `
+            <div style="font-weight: 700; font-size: 18px;">${escapeHTML(part)}</div>
+            <div style="margin-top: 8px; color: var(--muted);">No detailed info available for this part.</div>
+          `;
+        }
+        elements.specSlide.classList.add('visible');
+      }, 300);
+    }
+
+    // Attach hotspot interactions
+    function attachHotspots() {
+      document.querySelectorAll('.hotspot').forEach(el => {
+        // Remove existing listeners to prevent duplicates
+        el.removeEventListener('click', handleHotspotClick);
+        el.removeEventListener('mouseenter', handleHotspotEnter);
+        el.removeEventListener('mouseleave', handleHotspotLeave);
+        // Attach new listeners
+        el.addEventListener('click', handleHotspotClick);
+        el.addEventListener('mouseenter', handleHotspotEnter);
+        el.addEventListener('mouseleave', handleHotspotLeave);
+      });
+    }
+
+    function handleHotspotClick(e) {
+      const part = e.target.dataset.part;
+      showPartInfo(part);
+    }
+
+    function handleHotspotEnter(e) {
+      e.target.style.stroke = 'var(--accent)';
+      e.target.style.fill = 'var(--accent-light)';
+    }
+
+    function handleHotspotLeave(e) {
+      e.target.style.stroke = 'transparent';
+      e.target.style.fill = 'transparent';
+    }
+
+    // Theme toggle
+    elements.themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+      elements.themeToggle.textContent = isDark ? '🌙' : '☀';
+    });
+
+    // Event listeners
+    elements.yearRange.addEventListener('input', () => {
+      state.year = parseInt(elements.yearRange.value);
+      elements.yr.textContent = state.year;
+      renderModels();
+    });
+
+    elements.search.addEventListener('input', debounce(() => {
+      state.query = elements.search.value;
+      renderModels();
+    }, 300));
+
+    // Main render
+    function render() {
+      renderCategories();
+      renderBrands();
+      renderModels();
+      attachHotspots();
+    }
+
+    // Initial setup
+    render();
+    elements.specSlide.classList.remove('visible');
+  </script>
+</body>
+</html>
