@@ -345,7 +345,8 @@ const DATA = [
   {id:15,category:"Rally",brand:"Triumph",name:"Tiger 1200 Rally",year:2024,mileage:"18 kmpl",engine:"1160 cc, Inline-3",power:"147 PS @ 9000 rpm",weight:"235 kg",model3D:"/models/tiger1200rally.glb",parts:[],issues:[]},
 
   // Ducati
-  {id:16,category:"Sport",brand:"Ducati",name:"Panigale V4S",year:2024,mileage:"13 kmpl",engine:"1103 cc, V4",power:"216 PS @ 13500 rpm",weight:"195 kg",model3D:"/models/panigalev4s.glb",parts:[],issues:[]},
+  {id:16,category:"Sport",brand:"Ducati",name:"StreetFighter V4S",year:2024,mileage:"13 kmpl",engine:"1103 cc, V4",power:"216 PS @ 13500 rpm",weight:"195 kg",
+ model3D:"models/2024%20Ducati%20StreetFighter%20V4%20S.glb", parts:[],issues:[]},
   {id:17,category:"Sport",brand:"Ducati",name:"Panigale V2",year:2024,mileage:"16 kmpl",engine:"955 cc, V-Twin",power:"155 PS @ 10750 rpm",weight:"200 kg",model3D:"/models/panigalev2.glb",parts:[],issues:[]},
   {id:18,category:"Adventure",brand:"Ducati",name:"Multistrada V2",year:2024,mileage:"17 kmpl",engine:"937 cc, V-Twin",power:"115 PS @ 9000 rpm",weight:"222 kg",model3D:"/models/multistradav2.glb",parts:[],issues:[]},
   {id:19,category:"Adventure",brand:"Ducati",name:"Multistrada V3",year:2024,mileage:"16 kmpl",engine:"1158 cc, V4",power:"170 PS @ 10500 rpm",weight:"240 kg",model3D:"/models/multistradav3.glb",parts:[],issues:[]},
@@ -482,15 +483,36 @@ class BikeExplorer {
     this.dom.closeBtn.onclick = () => this.closeDetail();
 
     // Load 3D
-    this.dom.viewer.classList.add('loading');
-    if (m.model3D) {
-      this.dom.mv.src = m.model3D;
-      this.dom.mv.addEventListener('load', () => this.dom.viewer.classList.remove('loading'), {once: true});
-    } else {
-      this.dom.mv.removeAttribute('src');
-      this.dom.mv.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">No 3D model</div>';
+this.dom.viewer.classList.add('loading');
+this.dom.mv.removeAttribute('src');
+
+if (m.model3D) {
+  // First verify that the file exists before loading it into model-viewer
+  fetch(m.model3D, { method: 'HEAD' })
+    .then(res => {
+      if (res.ok) {
+        this.dom.mv.src = m.model3D;
+        this.dom.mv.addEventListener('load', () => {
+          this.dom.viewer.classList.remove('loading');
+        }, { once: true });
+      } else {
+        throw new Error('File not found');
+      }
+    })
+    .catch(() => {
       this.dom.viewer.classList.remove('loading');
-    }
+      this.dom.mv.innerHTML =
+        `<div style="text-align:center;color:var(--muted);padding:2rem;">
+          ❌ 3D model not found<br>
+          <small>${this.escape(m.model3D)}</small>
+        </div>`;
+    });
+} else {
+  this.dom.viewer.classList.remove('loading');
+  this.dom.mv.innerHTML =
+    '<div style="text-align:center;color:var(--muted);padding:2rem;">No 3D model</div>';
+}
+
 
     // Specs
     const html = `
