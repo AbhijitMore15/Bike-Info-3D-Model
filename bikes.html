@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bike Info — Premium Explorer</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Satoshi:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <!-- Model Viewer -->
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    /* ────────────────────── ROOT ────────────────────── */
+    :root {
+      --bg: #0f0f1a;
+      --card: rgba(30, 30, 50, 0.55);
+      --glass: rgba(255, 255, 255, 0.07);
+      --text: #f5f5fa;
+      --muted: #a0a0c0;
+      --accent: #00d4ff;
+      --accent-glow: #00d4ff44;
+      --radius: 20px;
+      --shadow: 0 12px 40px rgba(0,0,0,0.35);
+      --transition: all 0.35s cubic-bezier(0.23,1,0.32,1);
+    }
+    [data-theme="light"] {
+      --bg: #fafafa;
+      --card: rgba(255,255,255,0.92);
+      --glass: rgba(255,255,255,0.45);
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --accent: #0066ff;
+      --accent-glow: #0066ff33;
+      --shadow: 0 12px 40px rgba(0,0,0,0.12);
+    }
+
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html,body { height:100%; background:var(--bg); color:var(--text); font-family:'Satoshi',sans-serif; overflow-x:hidden; }
+    body { transition:background 0.6s ease; }
+
+    /* ────────────────────── LAYOUT ────────────────────── */
+    .wrap { max-width:1400px; margin:0 auto; padding:2rem 1.5rem; }
+    .header { display:flex; align-items:center; gap:1.5rem; padding:1.5rem 2rem;
+               background:var(--card); backdrop-filter:blur(12px);
+               border-radius:var(--radius); box-shadow:var(--shadow); }
+    .logo { width:72px; height:72px; border-radius:16px;
+            background:linear-gradient(135deg,var(--accent),#00aaff);
+            display:flex; align-items:center; justify-content:center;
+            font-size:1.8rem; font-weight:900; color:#fff;
+            box-shadow:0 8px 20px var(--accent-glow); }
+    .logo:hover { transform:scale(1.07); }
+    .title { font-size:1.75rem; font-weight:900; }
+    .lead { font-size:0.95rem; color:var(--muted); margin-top:0.25rem; }
+
+    /* ────────────────────── THEME BUTTON ────────────────────── */
+    .theme-toggle {
+      background: var(--glass);
+      border: none;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 1.35rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .theme-toggle:hover {
+      transform: scale(1.1) rotate(15deg);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .layout { display:grid; grid-template-columns:300px 1fr; gap:2rem; margin-top:2rem; }
+    .sidebar { background:var(--card); backdrop-filter:blur(12px);
+               border-radius:var(--radius); padding:2rem; box-shadow:var(--shadow);
+               position:sticky; top:2rem; height:fit-content; }
+    .section-title { font-size:0.85rem; font-weight:600; text-transform:uppercase;
+                     letter-spacing:0.08em; color:var(--muted); margin-bottom:0.75rem; }
+
+    /* ────────────────────── FILTERS (CATEGORY & BRAND - IDENTICAL STYLE) ────────────────────── */
+    .filter-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .filter-btn {
+      background: var(--glass);
+      color: var(--text);
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .filter-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .filter-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    /* ────────────────────── MAIN ────────────────────── */
+    .controls { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; }
+    .search { flex:1; padding:0.9rem 1.2rem; border:none;
+              border-radius:12px; background:var(--card); backdrop-filter:blur(8px);
+              box-shadow:var(--shadow); font-size:0.95rem; transition:var(--transition); }
+    .search:focus { outline:none; box-shadow:0 0 0 4px var(--accent-glow); }
+    .count { font-size:0.85rem; color:var(--muted); }
+
+    .models { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+              gap:1.25rem; }
+    .card { background:var(--card); backdrop-filter:blur(12px);
+            border-radius:var(--radius); padding:1.25rem; cursor:pointer;
+            transition:var(--transition); opacity:0; transform:translateY(30px); }
+    .card:hover { transform:translateY(-10px); box-shadow:0 20px 40px rgba(0,0,0,0.3); }
+    .model-year { font-size:0.75rem; color:var(--muted); }
+    .model-name { font-size:1.1rem; font-weight:700; margin-top:0.4rem; }
+
+    /* ────────────────────── DETAIL ────────────────────── */
+    .detail { display:grid; grid-template-columns:560px 1fr; gap:2rem; margin-top:2rem;
+              opacity:0; }
+    .viewer { background:var(--card); backdrop-filter:blur(12px);
+              border-radius:var(--radius); padding:1rem; position:relative;
+              box-shadow:var(--shadow); overflow:hidden; }
+    model-viewer { width:100%; height:380px; border-radius:12px; background:var(--bg); }
+    .viewer.loading::after { content:"Loading 3D…"; position:absolute; inset:0;
+                             display:flex; align-items:center; justify-content:center;
+                             color:var(--muted); font-size:0.9rem; background:rgba(0,0,0,0.3); }
+
+    .diagram { margin-top:1rem; position:relative; }
+    .diagram svg { width:100%; height:210px; }
+    .hotspot { fill:transparent; stroke:transparent; cursor:pointer; transition:var(--transition); }
+    .hotspot:hover { fill:var(--accent-glow); stroke:var(--accent); stroke-width:3; }
+    .pulse { animation:pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+
+    .info-panel { background:var(--card); backdrop-filter:blur(12px);
+                  border-radius:var(--radius); padding:1.5rem; box-shadow:var(--shadow); }
+    .slide { opacity:0; transform:translateY(20px); transition:var(--transition); }
+    .slide.visible { opacity:1; transform:none; }
+
+    .specs > div { display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:0.4rem; }
+    .issue { background:var(--glass); padding:0.9rem; border-radius:12px;
+             margin-bottom:0.75rem; transition:var(--transition); }
+    .issue:hover { background:var(--accent); color:#fff; }
+
+    /* ────────────────────── RESPONSIVE ────────────────────── */
+    @media (max-width:980px) {
+      .layout { grid-template-columns:1fr; }
+      .detail { grid-template-columns:1fr; }
+      .sidebar { position:static; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">BI</div>
+    <div>
+      <h1 class="title">Bike Info — Premium Explorer</h1>
+      <p class="lead">Explore premium motorcycles. Try BMW → R 1300 GS.</p>
+    </div>
+    <button class="theme-toggle" aria-label="Toggle theme">Moon</button>
+  </header>
+
+  <section class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="section-title">Category</div>
+      <div id="categories" class="filter-grid"></div>
+
+      <div class="section-title">Brands</div>
+      <div id="brands" class="filter-grid"></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="controls">
+        <input id="search" class="search" placeholder="Search model (e.g., R 1300 GS)">
+        <div class="count">Filter: <small id="count">0 results</small></div>
+      </div>
+
+      <div id="models" class="models"></div>
+
+      <div id="detailWrap" class="detail" style="display:none;">
+        <div class="viewer" id="viewer">
+          <model-viewer id="mv" camera-controls ar ar-modes="webxr scene-viewer quick-look"
+                        exposure="1" auto-rotate></model-viewer>
+
+          <div class="diagram">
+            <svg viewBox="0 0 800 200" preserveAspectRatio="xMidYMid meet">
+              <rect x="6" y="6" width="788" height="188" rx="12" fill="var(--bg)"/>
+              <circle cx="180" cy="100" r="32" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+              <rect x="300" y="70" width="160" height="60" rx="8" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+              <ellipse cx="620" cy="100" rx="50" ry="32" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>
+
+              <circle class="hotspot" data-part="Engine" cx="180" cy="100" r="40"/>
+              <rect class="hotspot" data-part="Chassis" x="300" y="70" width="160" height="60"/>
+              <ellipse class="hotspot" data-part="Lights" cx="620" cy="100" rx="50" ry="32"/>
+
+              <text x="180" y="145" text-anchor="middle" fill="var(--text)" font-size="14">Engine</text>
+              <text x="380" y="150" text-anchor="middle" fill="var(--text)" font-size="14">Chassis</text>
+              <text x="620" y="145" text-anchor="middle" fill="var(--text)" font-size="14">Lights</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="info-panel">
+          <div id="specSlide" class="slide">
+            <!-- Filled by JS -->
+          </div>
+
+          <div class="issues">
+            <div style="font-weight:700; margin-bottom:0.75rem;">Common Problems &amp; Fixes</div>
+            <div id="issuesList"></div>
+          </div>
+
+          <p style="margin-top:1rem; font-size:0.85rem; color:var(--muted);">
+            Click diagram hotspots • 3D models are placeholders.
+          </p>
+        </div>
+      </div>
+    </main>
+  </section>
+</div>
+
+<script>
+/* ────────────────────── DATA ────────────────────── */
+const DATA = [
+  // BMW
+  {id:1,category:"Adventure",brand:"BMW",name:"R 1300 GS",year:2024,mileage:"18 kmpl",engine:"1300 cc, Boxer",power:"145 PS @ 7750 rpm",weight:"237 kg",model3D:"/models/r1300gs.glb",parts:[],issues:[]},
+  {id:2,category:"Adventure",brand:"BMW",name:"R 1250 GSA",year:2024,mileage:"21 kmpl",engine:"1254 cc, Boxer",power:"136 PS @ 7750 rpm",weight:"268 kg",model3D:"/models/r1250gsa.glb",parts:[],issues:[]},
+  {id:3,category:"Sport",brand:"BMW",name:"S 1000 RR",year:2024,mileage:"15 kmpl",engine:"999 cc, Inline-4",power:"205 PS @ 13500 rpm",weight:"197 kg",model3D:"/models/s1000rr.glb",
+   parts:[{name:"Engine",desc:"High-revving inline-four with ShiftCam."},{name:"Chassis",desc:"Aluminium bridge frame."},{name:"Lights",desc:"Adaptive LED."}],
+   issues:[{title:"Engine overheating",fix:"Check coolant level and radiator."},{title:"Chain slack",fix:"Adjust tension to spec."}]},
+  {id:4,category:"Sport",brand:"BMW",name:"G 310 R",year:2024,mileage:"32 kmpl",engine:"313 cc, Single",power:"34 PS @ 9500 rpm",weight:"158 kg",model3D:"/models/g310r.glb",parts:[],issues:[]},
+  {id:5,category:"Rally",brand:"BMW",name:"F 900 GS",year:2024,mileage:"20 kmpl",engine:"895 cc, Parallel Twin",power:"105 PS @ 8500 rpm",weight:"211 kg",model3D:"/models/f900gs.glb",parts:[],issues:[]},
+
+  // Kawasaki
+  {id:6,category:"Sport",brand:"Kawasaki",name:"ZX-10R",year:2024,mileage:"12 kmpl",engine:"998 cc, Inline-4",power:"203 PS @ 13200 rpm",weight:"207 kg",model3D:"/models/zx10r.glb",parts:[],issues:[]},
+  {id:7,category:"Sport",brand:"Kawasaki",name:"ZX-4R",year:2024,mileage:"19 kmpl",engine:"399 cc, Inline-4",power:"76 PS @ 14500 rpm",weight:"189 kg",model3D:"/models/zx4r.glb",parts:[],issues:[]},
+  {id:8,category:"Adventure",brand:"Kawasaki",name:"Versys 1100",year:2024,mileage:"18 kmpl",engine:"1099 cc, Inline-4",power:"135 PS @ 9000 rpm",weight:"257 kg",model3D:"/models/versys1100.glb",parts:[],issues:[]},
+  {id:9,category:"Adventure",brand:"Kawasaki",name:"Versys 600",year:2024,mileage:"20 kmpl",engine:"649 cc, Parallel Twin",power:"67 PS @ 8500 rpm",weight:"219 kg",model3D:"/models/versys600.glb",parts:[],issues:[]},
+  {id:10,category:"Rally",brand:"Kawasaki",name:"KLX 200",year:2024,mileage:"25 kmpl",engine:"199 cc, Single",power:"18 PS @ 8000 rpm",weight:"130 kg",model3D:"/models/klx200.glb",parts:[],issues:[]},
+  {id:11,category:"Rally",brand:"Kawasaki",name:"KLX 300",year:2024,mileage:"24 kmpl",engine:"292 cc, Single",power:"28 PS @ 8000 rpm",weight:"138 kg",model3D:"/models/klx300.glb",parts:[],issues:[]},
+
+  // Triumph
+  {id:12,category:"Sport",brand:"Triumph",name:"Daytona 765",year:2024,mileage:"19 kmpl",engine:"765 cc, Inline-3",power:"130 PS @ 12000 rpm",weight:"166 kg",model3D:"/models/daytona765.glb",parts:[],issues:[]},
+  {id:13,category:"Adventure",brand:"Triumph",name:"Tiger 1200",year:2024,mileage:"19 kmpl",engine:"1160 cc, Inline-3",power:"150 PS @ 9000 rpm",weight:"245 kg",model3D:"/models/tiger1200.glb",parts:[],issues:[]},
+  {id:14,category:"Adventure",brand:"Triumph",name:"Tiger 900",year:2024,mileage:"20 kmpl",engine:"888 cc, Inline-3",power:"94 PS @ 8750 rpm",weight:"218 kg",model3D:"/models/tiger900.glb",parts:[],issues:[]},
+  {id:15,category:"Rally",brand:"Triumph",name:"Tiger 1200 Rally",year:2024,mileage:"18 kmpl",engine:"1160 cc, Inline-3",power:"147 PS @ 9000 rpm",weight:"235 kg",model3D:"/models/tiger1200rally.glb",parts:[],issues:[]},
+
+  // Ducati
+  {id:16,category:"Sport",brand:"Ducati",name:"Panigale V4S",year:2024,mileage:"13 kmpl",engine:"1103 cc, V4",power:"216 PS @ 13500 rpm",weight:"195 kg",model3D:"/models/panigalev4s.glb",parts:[],issues:[]},
+  {id:17,category:"Sport",brand:"Ducati",name:"Panigale V2",year:2024,mileage:"16 kmpl",engine:"955 cc, V-Twin",power:"155 PS @ 10750 rpm",weight:"200 kg",model3D:"/models/panigalev2.glb",parts:[],issues:[]},
+  {id:18,category:"Adventure",brand:"Ducati",name:"Multistrada V2",year:2024,mileage:"17 kmpl",engine:"937 cc, V-Twin",power:"115 PS @ 9000 rpm",weight:"222 kg",model3D:"/models/multistradav2.glb",parts:[],issues:[]},
+  {id:19,category:"Adventure",brand:"Ducati",name:"Multistrada V3",year:2024,mileage:"16 kmpl",engine:"1158 cc, V4",power:"170 PS @ 10500 rpm",weight:"240 kg",model3D:"/models/multistradav3.glb",parts:[],issues:[]},
+  {id:20,category:"Rally",brand:"Ducati",name:"Hypermotard 698",year:2024,mileage:"21 kmpl",engine:"659 cc, Single",power:"77 PS @ 9750 rpm",weight:"151 kg",model3D:"/models/hypermotard698.glb",parts:[],issues:[]},
+  {id:21,category:"Rally",brand:"Ducati",name:"DesertX",year:2024,mileage:"18 kmpl",engine:"937 cc, V-Twin",power:"110 PS @ 9250 rpm",weight:"211 kg",model3D:"/models/desertx.glb",parts:[],issues:[]}
+];
+
+/* ────────────────────── APP CLASS ────────────────────── */
+class BikeExplorer {
+  constructor() {
+    this.state = {category: null, brand: null, query: "", selected: null};
+    this.dom = this.cacheDom();
+    this.initTheme();
+    this.bindEvents();
+    this.render();
+    this.initGSAP();
+  }
+
+  cacheDom() {
+    return {
+      categories: document.getElementById('categories'),
+      brands: document.getElementById('brands'),
+      models: document.getElementById('models'),
+      count: document.getElementById('count'),
+      search: document.getElementById('search'),
+      detailWrap: document.getElementById('detailWrap'),
+      specSlide: document.getElementById('specSlide'),
+      issuesList: document.getElementById('issuesList'),
+      mv: document.getElementById('mv'),
+      viewer: document.getElementById('viewer'),
+      themeBtn: document.querySelector('.theme-toggle')
+    };
+  }
+
+  initTheme() {
+    const saved = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = saved;
+    this.dom.themeBtn.textContent = saved === 'dark' ? 'Moon' : 'Sun';
+  }
+
+  bindEvents() {
+    this.dom.search.addEventListener('input', this.debounce(e => {
+      this.state.query = e.target.value.trim();
+      this.renderModels();
+    }, 300));
+
+    this.dom.themeBtn.addEventListener('click', () => {
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      const newTheme = isDark ? 'light' : 'dark';
+      document.documentElement.dataset.theme = newTheme;
+      localStorage.setItem('theme', newTheme);
+      this.dom.themeBtn.textContent = isDark ? 'Sun' : 'Moon';
+    });
+
+    document.querySelector('.diagram').addEventListener('click', e => {
+      const hs = e.target.closest('.hotspot');
+      if (hs) this.showPartInfo(hs.dataset.part);
+    });
+  }
+
+  render() {
+    this.renderCategories();
+    this.renderBrands();
+    this.renderModels();
+  }
+
+  renderCategories() {
+    const cats = [...new Set(DATA.map(d => d.category))];
+    this.dom.categories.innerHTML = cats.map(c =>
+      `<button class="filter-btn ${this.state.category === c ? 'active' : ''}">${c}</button>`
+    ).join('');
+
+    this.dom.categories.onclick = e => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      this.state.category = this.state.category === btn.textContent ? null : btn.textContent;
+      this.state.brand = null;
+      this.render();
+    };
+  }
+
+  renderBrands() {
+    const filteredByCat = this.state.category ? DATA.filter(d => d.category === this.state.category) : DATA;
+    const brands = [...new Set(filteredByCat.map(d => d.brand))];
+
+    this.dom.brands.innerHTML = brands.map(b =>
+      `<div class="filter-btn ${this.state.brand === b ? 'active' : ''}">${b}</div>`
+    ).join('');
+
+    this.dom.brands.onclick = e => {
+      const el = e.target.closest('.filter-btn');
+      if (!el) return;
+      this.state.brand = this.state.brand === el.textContent ? null : el.textContent;
+      this.renderModels();
+    };
+  }
+
+  renderModels() {
+    let list = DATA.filter(d => {
+      if (this.state.category && d.category !== this.state.category) return false;
+      if (this.state.brand && d.brand !== this.state.brand) return false;
+      if (this.state.query && !d.name.toLowerCase().includes(this.state.query.toLowerCase())) return false;
+      return true;
+    });
+
+    this.dom.count.textContent = `${list.length} result${list.length === 1 ? '' : 's'}`;
+    this.dom.models.innerHTML = list.length ? '' :
+      `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:2rem;">No models found</div>`;
+
+    this.dom.models.querySelectorAll('.card').forEach(c => c.remove());
+
+    list.forEach((m, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="model-year">${this.escape(m.brand)}</div>
+        <div class="model-name">${this.highlight(m.name, this.state.query)}</div>
+      `;
+      card.onclick = () => this.openDetail(m);
+      this.dom.models.appendChild(card);
+      gsap.fromTo(card, {y: 60, opacity: 0}, {y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: i * 0.06});
+    });
+  }
+
+  openDetail(m) {
+    this.state.selected = m;
+    this.dom.detailWrap.style.display = 'grid';
+    gsap.to(this.dom.detailWrap, {opacity: 1, duration: 0.6, ease: "power2.out"});
+
+    this.dom.viewer.classList.add('loading');
+    if (m.model3D) {
+      this.dom.mv.src = m.model3D;
+      this.dom.mv.addEventListener('load', () => this.dom.viewer.classList.remove('loading'), {once: true});
+    } else {
+      this.dom.mv.removeAttribute('src');
+      this.dom.mv.innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">No 3D model</div>';
+      this.dom.viewer.classList.remove('loading');
+    }
+
+    const html = `
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div>
+          <div style="font-weight:900;font-size:1.35rem;">${this.escape(m.brand)} ${this.escape(m.name)}</div>
+          <div class="model-year">${this.escape(m.category)} · ${this.escape(m.brand)}</div>
+        </div>
+        <div style="font-weight:700;color:var(--accent);">Mileage: <span>${this.escape(m.mileage)||'—'}</span></div>
+      </div>
+      <div class="specs" style="margin-top:1rem;">
+        <div><strong>Engine:</strong> <span>${this.escape(m.engine)||'—'}</span></div>
+        <div><strong>Power:</strong> <span>${this.escape(m.power)||'—'}</span></div>
+        <div><strong>Weight:</strong> <span>${this.escape(m.weight)||'—'}</span></div>
+      </div>
+    `;
+    this.dom.specSlide.innerHTML = html;
+    this.dom.specSlide.classList.remove('visible');
+    setTimeout(() => this.dom.specSlide.classList.add('visible'), 50);
+
+    this.dom.issuesList.innerHTML = (m.issues || []).map(i => `
+      <div class="issue"><strong>${this.escape(i.title)}</strong>
+        <div style="margin-top:0.4rem;font-size:0.85rem;">Fix: ${this.escape(i.fix)}</div>
+      </div>`).join('');
+  }
+
+  showPartInfo(part) {
+    const m = this.state.selected;
+    const info = (m.parts || []).find(p => p.name === part);
+    this.dom.specSlide.classList.remove('visible');
+    setTimeout(() => {
+      this.dom.specSlide.innerHTML = info ? `
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+          <div>
+            <div style="font-weight:900;font-size:1.35rem;">${this.escape(m.brand)} ${this.escape(m.name)}</div>
+            <div class="model-year">${part}</div>
+          </div>
+          <div style="font-weight:700;color:var(--accent);">Mileage: ${this.escape(m.mileage)||'—'}</div>
+        </div>
+        <div style="margin-top:1rem;font-size:0.95rem;">${this.escape(info.desc)}</div>
+      ` : `
+        <div style="font-weight:700;font-size:1.2rem;">${part}</div>
+        <div style="margin-top:0.5rem;color:var(--muted);">No detailed info available.</div>
+      `;
+      this.dom.specSlide.classList.add('visible');
+    }, 300);
+  }
+
+  escape(str) { return str ? String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]) : ''; }
+  highlight(text, query) {
+    if (!query) return this.escape(text);
+    const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return this.escape(text).replace(re, '<mark style="background:var(--accent);color:#fff;border-radius:4px;padding:0 2px;">$1</mark>');
+  }
+  debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+  initGSAP() {
+    gsap.from('.header', {y: -40, opacity: 0, duration: 0.8, ease: 'power3.out'});
+    gsap.from('.sidebar', {x: -60, opacity: 0, duration: 0.8, delay: 0.2, ease: 'power3.out'});
+  }
+}
+
+new BikeExplorer();
+</script>
+</body>
+</html>
