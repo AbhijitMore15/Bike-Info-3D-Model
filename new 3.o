@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bike Info — Premium Explorer</title>
+  <!-- Font & tools -->
+  <link href="https://fonts.googleapis.com/css2?family=Satoshi:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    /* ---------- Base CSS variables ---------- */
+    :root{
+      --bg:#0f0f1a;--card:#1e1e32;--glass:rgba(255,255,255,0.03);
+      --text:#f5f5fa;--muted:#9aa0b8;--accent:#00d4ff;
+      --accent-glow:rgba(0,212,255,0.16);--radius:14px;
+      --shadow:0 18px 50px rgba(0,0,0,0.35);
+      --transition:0.45s cubic-bezier(.2,.9,.3,1);--ui-gap:12px;
+    }
+    [data-theme="light"]{
+      --bg:#fbfcff;--card:#ffffff;--glass:rgba(0,0,0,0.04);
+      --text:#0a1222;--muted:#6b7280;--accent:#0066ff;
+      --accent-glow:rgba(0,102,255,0.12);
+      --shadow:0 10px 30px rgba(0,0,0,0.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;padding:18px;background:var(--bg);color:var(--text);
+      font-family:'Satoshi',system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      -webkit-font-smoothing:antialiased;transition:background var(--transition),color var(--transition);
+    }
+    .wrap{max-width:1200px;margin:0 auto}
+    /* Header */
+    .header{display:flex;align-items:center;gap:16px;padding:14px;background:var(--card);border-radius:12px;box-shadow:var(--shadow)}
+    .logo{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent));box-shadow:0 8px 30px var(--accent-glow);transition:all var(--transition)}
+    .title-block{line-height:1}
+    .title-block .title{font-size:18px;font-weight:900}
+    .title-block .lead{font-size:13px;color:var(--muted);margin-top:4px}
+    .theme-toggle{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:10px;color:var(--text);cursor:pointer}
+    /* Layout */
+    .layout{display:grid;grid-template-columns:260px 1fr;gap:14px;margin-top:14px}
+    .sidebar{background:var(--card);padding:14px;border-radius:12px;box-shadow:var(--shadow);position:sticky;top:18px;align-self:start}
+    .section-title{font-size:12px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+    .filter-grid{display:flex;flex-direction:column;gap:8px}
+    .filter-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:10px;color:var(--text);cursor:pointer;font-weight:700;transition:all .25s}
+    .filter-btn.active{background:var(--accent);color:#001;border-color:transparent;box-shadow:0 10px 30px var(--accent-glow)}
+    .controls{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+    .search{flex:1;padding:9px 12px;border-radius:10px;border:0;background:var(--card);box-shadow:inset 0 4px 10px rgba(0,0,0,0.25);color:var(--text)}
+    .count{color:var(--muted);font-weight:700}
+    .models{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .card{background:var(--card);padding:12px;border-radius:12px;cursor:pointer;transition:transform .25s,box-shadow .25s;box-shadow:0 12px 30px rgba(0,0,0,0.25)}
+    .card:hover{transform:translateY(-6px);box-shadow:0 24px 50px rgba(0,0,0,0.35)}
+    .model-year{font-size:12px;color:var(--muted)}
+    .model-name{font-weight:800;margin-top:6px}
+    /* Detail sheet */
+    .detail-sheet{position:fixed;inset:0;display:none;z-index:1400}
+    .sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.6);opacity:0;transition:opacity .35s}
+    .sheet-content{
+      position:absolute;left:50%;bottom:20px;transform:translate(-50%,120%);width:96%;max-width:1100px;background:var(--card);border-radius:14px;padding:12px;box-shadow:0 30px 90px rgba(0,0,0,0.6);
+      transition:transform .55s cubic-bezier(.2,.9,.3,1),opacity .4s;display:grid;grid-template-columns:460px 1fr;gap:12px;max-height:86vh;overflow:hidden;
+    }
+    .detail-sheet.open{display:block}
+    .detail-sheet.open .sheet-backdrop{opacity:1}
+    .detail-sheet.open .sheet-content{transform:translate(-50%,0)}
+    .sheet-close{position:absolute;right:18px;top:14px;background:transparent;border:0;color:var(--muted);font-size:20px;cursor:pointer;padding:8px}
+    /* viewer & stat row */
+    .viewer{background:transparent;padding:10px;display:flex;flex-direction:column;gap:10px;overflow:hidden;border-radius:10px}
+    model-viewer{width:100%;height:340px;border-radius:10px;background:transparent}
+    .stat-row{display:flex;gap:10px}
+    .stat-card{flex:1;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:transform .25s}
+    .stat-card:hover{transform:translateY(-6px)}
+    .stat-card.active{background:var(--accent);color:#001}
+    .stat-icon{width:46px;height:46px;border-radius:10px;background:var(--glass);display:flex;align-items:center;justify-content:center;font-weight:800}
+    .stat-label{font-size:12px;color:var(--muted)}
+    .stat-value{font-weight:800;margin-top:4px;color:var(--accent)}
+    .mini{font-size:11px;color:var(--muted);margin-top:2px}
+    /* info panel */
+    .info-panel{
+      padding:16px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));
+      overflow-y:auto;max-height:calc(86vh - 40px);box-shadow:0 10px 40px rgba(0,0,0,0.35);
+      border-left:1px solid rgba(255,255,255,0.02);
+    }
+    .info-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    .bike-title{font-size:18px;font-weight:900;color:var(--accent)}
+    .bike-sub{color:var(--muted);font-weight:700;font-size:13px;margin-top:6px}
+    .nav-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .nav-pill{padding:8px 12px;border-radius:999px;background:var(--glass);border:1px solid rgba(255,255,255,0.02);cursor:pointer;font-weight:700;color:var(--muted);transition:all .22s}
+    .nav-pill.active{background:var(--accent);color:#001;box-shadow:0 12px 30px var(--accent-glow)}
+    .sections{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+    .section{background:rgba(255,255,255,0.01);padding:14px;border-radius:10px;border-left:4px solid transparent;transition:all .25s}
+    .section.active{border-left:4px solid var(--accent)}
+    .section h3{margin:0;color:var(--accent);font-size:15px;font-weight:900;text-shadow:0 0 8px var(--accent-glow)}
+    .section p{margin-top:8px;color:var(--text);line-height:1.5;font-size:13px}
+    .section .mini{color:var(--muted);font-size:12px;margin-top:8px}
+    @media (max-width:980px){
+      .layout{grid-template-columns:1fr}
+      .detail-sheet .sheet-content{grid-template-columns:1fr}
+      .sections{grid-template-columns:1fr}
+      model-viewer{height:220px}
+    }
+    .info-panel::-webkit-scrollbar{width:10px}
+    .info-panel::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--accent),rgba(255,255,255,0.15));border-radius:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="header">
+      <div class="logo" id="logo">BI</div>
+      <div class="title-block">
+        <div class="title">Bike Info — Premium Explorer</div>
+        <div class="lead">Manual-sourced extracts • Click Engine/Chassis/Lights to jump</div>
+      </div>
+      <button id="themeBtn" class="theme-toggle" aria-label="toggle theme">Dark Mode</button>
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="section-title">Categories</div>
+        <div id="categories" class="filter-grid"></div>
+        <div style="height:12px"></div>
+        <div class="section-title">Brands</div>
+        <div id="brands" class="filter-grid"></div>
+      </aside>
+      <main>
+        <div class="controls">
+          <input id="search" class="search" placeholder="Search model (e.g., R 1300 GS)">
+          <div class="count">Filter: <small id="count">0 results</small></div>
+        </div>
+        <div id="models" class="models"></div>
+        <!-- DETAIL PANEL -->
+        <div id="detailWrap" class="detail-sheet" role="dialog" aria-hidden="true">
+          <div class="sheet-backdrop"></div>
+          <div class="sheet-content" role="document">
+            <button class="sheet-close" id="closeSheet">X</button>
+            <!-- LEFT: viewer + stat row -->
+            <div class="viewer">
+              <model-viewer id="mv" camera-controls auto-rotate ar ar-modes="webxr scene-viewer quick-look" exposure="1"></model-viewer>
+              <div class="stat-row" id="statRow">
+                <div class="stat-card" data-target="sec-engine">
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <div class="stat-icon">E</div>
+                    <div>
+                      <div class="stat-label">Engine</div>
+                      <div class="stat-value" id="stat-engine">—</div>
+                      <div class="mini" id="stat-engine-mini"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stat-card" data-target="sec-chassis">
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <div class="stat-icon">C</div>
+                    <div>
+                      <div class="stat-label">Chassis</div>
+                      <div class="stat-value" id="stat-chassis">—</div>
+                      <div class="mini" id="stat-chassis-mini"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stat-card" data-target="sec-lights">
+                  <div style="display:flex;gap:10px;align-items:center">
+                    <div class="stat-icon">L</div>
+                    <div>
+                      <div class="stat-label">Lights</div>
+                      <div class="stat-value" id="stat-lights">—</div>
+                      <div class="mini" id="stat-lights-mini"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- RIGHT: info panel -->
+            <div class="info-panel" id="infoPanel">
+              <div class="info-top">
+                <div>
+                  <div class="bike-title" id="bikeTitle">—</div>
+                  <div class="bike-sub" id="bikeSub">—</div>
+                  <div class="nav-pills" id="navPills">
+                    <div class="nav-pill" data-target="sec-engine">Engine</div>
+                    <div class="nav-pill" data-target="sec-chassis">Chassis</div>
+                    <div class="nav-pill" data-target="sec-lights">Lights</div>
+                    <div class="nav-pill" data-target="sec-brakes">Brakes</div>
+                    <div class="nav-pill" data-target="sec-electrical">Electrical</div>
+                    <div class="nav-pill" data-target="sec-dimensions">Dimensions</div>
+                  </div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-weight:800;color:var(--muted);font-size:13px">RIDE QUICK</div>
+                  <div style="margin-top:6px;color:var(--muted);font-size:12px">Manual highlights — tap to jump</div>
+                </div>
+              </div>
+              <div class="sections" id="sectionsWrap">
+                <div class="section" id="sec-engine" tabindex="-1"><h3>Engine</h3><p id="engExtract"></p><div class="mini" id="engMore"></div></div>
+                <div class="section" id="sec-chassis" tabindex="-1"><h3>Chassis & Suspension</h3><p id="chassisExtract"></p><div class="mini" id="chassisMore"></div></div>
+                <div class="section" id="sec-lights" tabindex="-1"><h3>Lights & Signalling</h3><p id="lightsExtract"></p><div class="mini" id="lightsMore"></div></div>
+                <div class="section" id="sec-brakes" tabindex="-1"><h3>Brakes</h3><p id="brakesExtract"></p></div>
+                <div class="section" id="sec-electrical" tabindex="-1"><h3>Electrical</h3><p id="electricalExtract"></p></div>
+                <div class="section" id="sec-dimensions" tabindex="-1"><h3>Dimensions</h3><p id="dimExtract"></p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script>
+  /* ================= DATA ================= */
+  const DATA = [
+    {
+      id:1, category:"Adventure", brand:"BMW", name:"R 1300 GS", year:2024, mileage:"18 kmpl (WMTC)",
+      engine:{
+        summary:"Air-/liquid-cooled two-cylinder boxer with BMW ShiftCam.",
+        displacement:"1300 cm³",
+        type:"A75B13A boxer twin, 4-stroke, DOHC, ShiftCam",
+        power:"107 kW (145 PS) @ 7750 min⁻¹",
+        torque:"149 Nm @ 6500 min⁻¹",
+        compression:"13.3 : 1",
+        max_rpm:"9000 min⁻¹",
+        clutch:"Multi-plate oil-bath clutch, anti-hopping",
+        transmission:"6-speed gearbox, final drive ratio 2.909 (32/11)"
+      },
+      chassis:{
+        frame:"Monocoque sheet-metal frame with partially load-bearing drive unit; rear frame die-cast aluminium.",
+        front_susp:"BMW Telelever; central shock absorber with helical spring; spring travel 190 mm.",
+        rear_susp:"Cast aluminium single swingarm with Paralever; spring travel 200 mm.",
+        tyres:{ front:"120/70 R 19 — 2.5 bar (cold)", rear:"170/60 R 17 — 2.9 bar (cold)" }
+      },
+      lights:{
+        summary:"All LEDs with daytime running lights; cornering light function included.",
+        notes:"LED modules are replaced as assemblies — workshop recommended."
+      },
+      brakes:{
+        front:"Twin 310 mm floating discs, 4-piston radial calipers; sintered pads.",
+        rear:"Single 285 mm disc, 2-piston floating caliper.",
+        abs:"ABS Pro; Dynamic Brake Control (see manual)."
+      },
+      electrical:{
+        battery:"Lithium-ion 12 V, 10 Ah (optionally 14 Ah)",
+        fuses:"Main fuse 50 A; fuse map in manual. Accessory socket max 12 A.",
+        extras:"USB & power sockets (see accessory section)."
+      },
+      dimensions:{
+        length:"2212 mm",
+        height:"1406 mm (without mirrors)",
+        weight:"237 kg (DIN unladen)",
+        fuel:"Usable capacity approx. 19 l",
+        top_speed:"~225 km/h (manufacturer)"
+      },
+      model3D:""
+    },
+    {id:2,category:"Adventure",brand:"BMW",name:"R 1250 GSA",year:2024,mileage:"21 kmpl",engine:{summary:"1254 cc, Boxer",power:"136 PS @ 7750 rpm"}},
+    {id:3,category:"Sport",brand:"BMW",name:"S 1000 RR",year:2024,mileage:"15 kmpl",engine:{summary:"999 cc, Inline-4",power:"205 PS @ 13500 rpm"}},
+    {id:4,category:"Sport",brand:"BMW",name:"G 310 R",year:2024,mileage:"32 kmpl",engine:{summary:"313 cc, Single",power:"34 PS @ 9500 rpm"}},
+    {id:5,category:"Rally",brand:"BMW",name:"F 900 GS",year:2024,mileage:"20 kmpl",engine:{summary:"895 cc, Parallel Twin",power:"105 PS @ 8500 rpm"}},
+    {id:6,category:"Sport",brand:"Kawasaki",name:"ZX-10R",year:2024,mileage:"12 kmpl",engine:{summary:"998 cc, Inline-4",power:"203 PS @ 13200 rpm"}},
+    {id:7,category:"Sport",brand:"Kawasaki",name:"ZX-4R",year:2024,mileage:"19 kmpl",engine:{summary:"399 cc, Inline-4",power:"76 PS @ 14500 rpm"}},
+    {id:8,category:"Adventure",brand:"Kawasaki",name:"Versys 1100",year:2024,mileage:"18 kmpl",engine:{summary:"1099 cc, Inline-4",power:"135 PS @ 9000 rpm"}},
+    {id:9,category:"Adventure",brand:"Kawasaki",name:"Versys 600",year:2024,mileage:"20 kmpl",engine:{summary:"649 cc, Parallel Twin",power:"67 PS @ 8500 rpm"}},
+    {id:10,category:"Rally",brand:"Kawasaki",name:"KLX 200",year:2024,mileage:"25 kmpl",engine:{summary:"199 cc, Single",power:"18 PS @ 8000 rpm"}},
+    {id:11,category:"Rally",brand:"Kawasaki",name:"KLX 300",year:2024,mileage:"24 kmpl",engine:{summary:"292 cc single",power:"28 PS"}},
+    {id:12,category:"Sport",brand:"Triumph",name:"Daytona 765",year:2024,mileage:"19 kmpl",engine:{summary:"765 cc, Inline-3",power:"130 PS @ 12000 rpm"}},
+    {id:13,category:"Adventure",brand:"Triumph",name:"Tiger 1200",year:2024,mileage:"19 kmpl",engine:{summary:"1160 cc, Inline-3",power:"150 PS @ 9000 rpm"}},
+    {id:14,category:"Adventure",brand:"Triumph",name:"Tiger 900",year:2024,mileage:"20 kmpl",engine:{summary:"888 cc inline-3",power:"94 PS"}},
+    {id:15,category:"Rally",brand:"Triumph",name:"Tiger 1200 Rally",year:2024,mileage:"18 kmpl",engine:{summary:"1160 cc inline-3",power:"147 PS"}},
+    {id:16,category:"Sport",brand:"Ducati",name:"StreetFighter V4S",year:2024,mileage:"13 kmpl",engine:{summary:"1103 cc V4",power:"216 PS @ 13500 rpm"}},
+    {id:17,category:"Sport",brand:"Ducati",name:"Panigale V2",year:2024,mileage:"16 kmpl",engine:{summary:"955 cc, V-Twin",power:"155 PS @ 10750 rpm"}},
+    {id:18,category:"Adventure",brand:"Ducati",name:"Multistrada V2",year:2024,mileage:"17 kmpl",engine:{summary:"937 cc, V-Twin",power:"115 PS @ 9000 rpm"}},
+    {id:19,category:"Adventure",brand:"Ducati",name:"Multistrada V3",year:2024,mileage:"16 kmpl",engine:{summary:"1158 cc V4",power:"170 PS"}},
+    {id:20,category:"Rally",brand:"Ducati",name:"Hypermotard 698",year:2024,mileage:"21 kmpl",engine:{summary:"659 cc, Single",power:"77 PS @ 9750 rpm"}},
+    {id:21,category:"Rally",brand:"Ducati",name:"DesertX",year:2024,mileage:"18 kmpl",engine:{summary:"937 cc, V-Twin",power:"110 PS @ 9250 rpm"}}
+  ];
+  /* ================ App ================ */
+  class BikeExplorer {
+    constructor(){
+      this.state = {category:null, brand:null, query:"", selected:null};
+      this.dom = this.cacheDom();
+      this.initTheme();
+      this.bindEvents();
+      this.renderAll();
+      this.applyBrandTheme(true);
+    }
+    cacheDom(){
+      return {
+        categories: document.getElementById('categories'),
+        brands: document.getElementById('brands'),
+        models: document.getElementById('models'),
+        count: document.getElementById('count'),
+        search: document.getElementById('search'),
+        detailWrap:document.getElementById('detailWrap'),
+        sheetBackdrop:document.querySelector('.sheet-backdrop'),
+        sheetContent:document.querySelector('.sheet-content'),
+        closeSheet:document.getElementById('closeSheet'),
+        mv: document.getElementById('mv'),
+        logo: document.getElementById('logo'),
+        themeBtn: document.getElementById('themeBtn'),
+        infoPanel: document.getElementById('infoPanel'),
+        bikeTitle: document.getElementById('bikeTitle'),
+        bikeSub: document.getElementById('bikeSub'),
+        navPills: document.getElementById('navPills'),
+        statRow: document.getElementById('statRow')
+      };
+    }
+    initTheme(){
+      const saved = localStorage.getItem('theme') || 'dark';
+      document.documentElement.dataset.theme = saved;
+      this.dom.themeBtn.textContent = saved === 'dark' ? 'Dark Mode' : 'Light Mode';
+    }
+    bindEvents(){
+      this.dom.search.addEventListener('input', this.debounce(e=>{
+        this.state.query = e.target.value.trim();
+        this.renderModels();
+      },160));
+      this.dom.themeBtn.addEventListener('click',()=>{
+        const isDark = document.documentElement.dataset.theme === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        document.documentElement.dataset.theme = newTheme;
+        localStorage.setItem('theme',newTheme);
+        this.dom.themeBtn.textContent = newTheme === 'dark' ? 'Dark Mode' : 'Light Mode';
+        this.applyBrandTheme(true);
+      });
+      this.dom.sheetBackdrop.addEventListener('click',()=>this.closeDetail());
+      this.dom.closeSheet.addEventListener('click',()=>this.closeDetail());
+      this.dom.statRow.addEventListener('click',e=>{
+        const card = e.target.closest('.stat-card');
+        if(!card) return;
+        this.dom.statRow.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        this.scrollToSection(card.dataset.target);
+      });
+      this.dom.navPills.addEventListener('click',e=>{
+        const pill = e.target.closest('.nav-pill');
+        if(!pill) return;
+        this.dom.navPills.querySelectorAll('.nav-pill').forEach(p=>p.classList.remove('active'));
+        pill.classList.add('active');
+        this.scrollToSection(pill.dataset.target);
+        this.applyBrandTheme(true);
+      });
+      document.addEventListener('keydown',e=>{ if(e.key==='Escape') this.closeDetail(); });
+    }
+    renderAll(){
+      this.renderCategories();
+      this.renderBrands();
+      this.renderModels();
+    }
+    renderCategories(){
+      const cats = [...new Set(DATA.map(d=>d.category))];
+      const preferred = ['Adventure','Sport','Rally'];
+      const ordered = [...preferred.filter(p=>cats.includes(p)), ...cats.filter(c=>!preferred.includes(c))];
+      this.dom.categories.innerHTML = ordered.map(c=>`<button class="filter-btn">${c}</button>`).join('');
+      this.dom.categories.onclick = e=>{
+        const btn = e.target.closest('.filter-btn');
+        if(!btn) return;
+        this.state.category = this.state.category===btn.textContent ? null : btn.textContent;
+        this.state.brand = null;
+        this.renderAll();
+        this.applyBrandTheme(true);
+      };
+      this.dom.categories.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b.textContent===this.state.category));
+    }
+    renderBrands(){
+      const filtered = this.state.category ? DATA.filter(d=>d.category===this.state.category) : DATA;
+      const brands = [...new Set(filtered.map(d=>d.brand))].sort();
+      this.dom.brands.innerHTML = brands.map(b=>`<button class="filter-btn">${b}</button>`).join('');
+      this.dom.brands.onclick = e=>{
+        const btn = e.target.closest('.filter-btn');
+        if(!btn) return;
+        this.state.brand = this.state.brand===btn.textContent ? null : btn.textContent;
+        this.dom.brands.querySelectorAll('.filter-btn').forEach(el=>el.classList.toggle('active',el.textContent===this.state.brand));
+        this.renderModels();
+        this.applyBrandTheme(true);
+      };
+      this.dom.brands.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b.textContent===this.state.brand));
+    }
+    renderModels(){
+      let list = DATA.filter(d=>{
+        if(this.state.category && d.category!==this.state.category) return false;
+        if(this.state.brand && d.brand!==this.state.brand) return false;
+        if(this.state.query && !d.name.toLowerCase().includes(this.state.query.toLowerCase())) return false;
+        return true;
+      });
+      this.dom.count.textContent = `${list.length} result${list.length===1?'':'s'}`;
+      this.dom.models.innerHTML = '';
+      list.forEach((m,i)=>{
+        const el = document.createElement('div'); el.className='card';
+        el.innerHTML = `<div class="model-year">${m.year} ${m.year}</div><div class="model-name">${this.escape(m.name)}</div>`;
+        el.onclick = ()=>this.openDetail(m);
+        this.dom.models.appendChild(el);
+        gsap.fromTo(el,{y:30,opacity:0},{y:0,opacity:1,duration:.45,delay:i*0.03});
+      });
+    }
+    openDetail(m){
+      this.state.selected = m;
+      const wrap = this.dom.detailWrap;
+      wrap.classList.add('open'); wrap.style.display='block'; wrap.setAttribute('aria-hidden','false');
+      if(m.model3D){ this.dom.mv.src = m.model3D; } else { this.dom.mv.removeAttribute('src'); }
+      document.getElementById('stat-engine').textContent = m.engine?.power || m.engine?.type || '—';
+      document.getElementById('stat-engine-mini').textContent = m.engine?.type || m.engine?.summary || '';
+      document.getElementById('stat-chassis').textContent = (m.chassis?.frame||'').split('.')[0]||'—';
+      document.getElementById('stat-chassis-mini').textContent = (m.chassis?.front_susp||'').split(';')[0]||'';
+      document.getElementById('stat-lights').textContent = m.lights?.summary ? 'LED' : '—';
+      document.getElementById('stat-lights-mini').textContent = (m.lights?.summary||'').slice(0,60);
+      this.dom.bikeTitle.textContent = `${m.brand} ${m.name}`;
+      this.dom.bikeSub.textContent = `${m.category} • ${m.year} • ${m.mileage||''}`;
+      const engArr = [
+        m.engine?.summary||'',
+        m.engine?.displacement ? `Displacement: ${m.engine.displacement}` : '',
+        m.engine?.power ? `Power: ${m.engine.power}` : '',
+        m.engine?.torque ? `Torque: ${m.engine.torque}` : '',
+        m.engine?.compression ? `Compression: ${m.engine.compression}` : '',
+        m.engine?.max_rpm ? `Max engine speed: ${m.engine.max_rpm}` : '',
+        m.engine?.transmission ? `Transmission: ${m.engine.transmission}` : ''
+      ].filter(Boolean);
+      document.getElementById('engExtract').innerHTML = engArr.join('<br>');
+      document.getElementById('engMore').textContent = m.engine?.clutch ? `Clutch: ${m.engine.clutch}` : '';
+      const chArr = [
+        m.chassis?.frame||'',
+        m.chassis?.front_susp ? `Front: ${m.chassis.front_susp}` : '',
+        m.chassis?.rear_susp ? `Rear: ${m.chassis.rear_susp}` : '',
+        m.chassis?.tyres ? `Tyres: F ${m.chassis.tyres.front} • R ${m.chassis.tyres.rear}` : ''
+      ].filter(Boolean);
+      document.getElementById('chassisExtract').innerHTML = chArr.join('<br>');
+      document.getElementById('lightsExtract').innerHTML = `${m.lights?.summary||''}<br>${m.lights?.notes||''}`;
+      document.getElementById('brakesExtract').innerHTML = `${m.brakes?.front||''}<br>${m.brakes?.rear||''}<br><strong>ABS:</strong> ${m.brakes?.abs||''}`;
+      document.getElementById('electricalExtract').innerHTML = `${m.electrical?.battery||''}<br>${m.electrical?.fuses||''}<br>${m.electrical?.extras||''}`;
+      const dims = [
+        m.dimensions?.length ? `Length: ${m.dimensions.length}` : '',
+        m.dimensions?.height ? `Height: ${m.dimensions.height}` : '',
+        m.dimensions?.weight ? `Weight: ${m.dimensions.weight}` : '',
+        m.dimensions?.fuel ? `Fuel: ${m.dimensions.fuel}` : '',
+        m.dimensions?.top_speed ? `Top speed: ${m.dimensions.top_speed}` : ''
+      ].filter(Boolean).join('<br>');
+      document.getElementById('dimExtract').innerHTML = dims;
+      // ---- No default active pill ----
+      this.dom.navPills.querySelectorAll('.nav-pill').forEach(p=>p.classList.remove('active'));
+      this.dom.statRow.querySelectorAll('.stat-card').forEach(c=>c.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+      this.state.brand = m.brand || this.state.brand;
+      this.applyBrandTheme(true);
+      setTimeout(()=>{ wrap.scrollIntoView({behavior:'smooth'}); },160);
+    }
+    closeDetail(){
+      const wrap = this.dom.detailWrap;
+      wrap.classList.remove('open');
+      wrap.setAttribute('aria-hidden','true');
+      setTimeout(()=>{ wrap.style.display='none'; this.state.selected=null; },380);
+    }
+    scrollToSection(id){
+      const el = document.getElementById(id);
+      if(!el) return;
+      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+      el.classList.add('active');
+      el.scrollIntoView({behavior:'smooth',block:'start'});
+      gsap.fromTo(el,{backgroundColor:'rgba(255,255,255,0.00)'},{backgroundColor:'rgba(255,255,255,0.02)',duration:.25,yoyo:true,repeat:1});
+      el.focus({preventScroll:true});
+    }
+    /* ----------------------------------------------------
+       THEME / BRAND COLOUR HANDLER
+       ---------------------------------------------------- */
+    applyBrandTheme(forceRepaint=false){
+      const root = document.documentElement;
+      const theme = root.dataset.theme || 'dark';
+      const brandPalettes = {
+        BMW:{
+          dark:{bg:'#0f0f1a',card:'#1e1e32',glass:'#2a2a3e',text:'#f5f5fa',muted:'#a0a0c0',accent:'#0066ff',glow:'rgba(0,102,255,0.25)'},
+          light:{bg:'#0066FF',card:'#0044CC',glass:'#003399',text:'#FFFFFF',muted:'#ADD8E6',accent:'#87CEEB',glow:'rgba(135,206,235,0.3)'}
+        },
+        Ducati:{
+          dark:{bg:'#1a0000',card:'#330000',glass:'#4d0000',text:'#ffffff',muted:'#ffcccc',accent:'#cc0000',glow:'rgba(204,0,0,0.25)'},
+          light:{bg:'#CC0000',card:'#990000',glass:'#660000',text:'#FFFFFF',muted:'#FFB6C1',accent:'#FF69B4',glow:'rgba(255,105,180,0.3)'}
+        },
+        Kawasaki:{
+          dark:{bg:'#001a00',card:'#003300',glass:'#004d00',text:'#ffffff',muted:'#99ff99',accent:'#00cc00',glow:'rgba(0,204,0,0.25)'},
+          light:{bg:'#00A550',card:'#008A45',glass:'#006633',text:'#FFFFFF',muted:'#90EE90',accent:'#00FF7F',glow:'rgba(0,255,127,0.3)'}
+        },
+        Triumph:{
+          dark:{bg:'#001400',card:'#002600',glass:'#003d00',text:'#ffffff',muted:'#88dd88',accent:'#006400',glow:'rgba(0,100,0,0.25)'},
+          light:{bg:'#004225',card:'#002D1A',glass:'#001B10',text:'#FFFFFF',muted:'#90EE90',accent:'#32CD32',glow:'rgba(50,205,50,0.3)'}
+        }
+      };
+      const defaults = {
+        dark:{bg:'#0f0f1a',card:'#1e1e32',glass:'rgba(255,255,255,0.03)',text:'#f5f5fa',muted:'#9aa0b8',accent:'#00d4ff',glow:'rgba(0,212,255,0.16)'},
+        light:{bg:'#fbfcff',card:'#ffffff',glass:'rgba(0,0,0,0.04)',text:'#0a1222',muted:'#6b7280',accent:'#0066ff',glow:'rgba(0,102,255,0.12)'}
+      };
+      let palette = {...defaults[theme]};
+      if(this.state.brand && brandPalettes[this.state.brand]){
+        const b = brandPalettes[this.state.brand][theme] || brandPalettes[this.state.brand].dark;
+        palette = {...palette, ...b};
+      }
+      const mapping = {bg:'bg',card:'card',glass:'glass',text:'text',muted:'muted',accent:'accent','accent-glow':'glow'};
+      Object.entries(mapping).forEach(([v,p])=>{
+        const val = palette[p]||palette[v]||'';
+        if(val) root.style.setProperty(`--${v}`,val);
+      });
+      const accent = palette.accent || getComputedStyle(root).getPropertyValue('--accent').trim();
+      const amt = theme === 'dark' ? 50 : -50;
+      const darker = this.lightenDarkenColor(accent,amt);
+      const glow = palette.glow || 'rgba(0,0,0,0.08)';
+      if(this.dom.logo){
+        this.dom.logo.style.background = `linear-gradient(135deg,${accent},${darker})`;
+        this.dom.logo.style.boxShadow = `0 8px 30px ${glow}`;
+      }
+      /* ----------------------------------------------------
+         RE-APPLY ACTIVE PILL & FILTER BUTTON COLOURS
+         ---------------------------------------------------- */
+      document.querySelectorAll('.nav-pill.active, .filter-btn.active').forEach(el=>{
+        el.style.background = 'var(--accent)';
+        el.style.color = '#001';
+        el.style.boxShadow = '0 12px 30px var(--accent-glow)';
+      });
+      if(forceRepaint){
+        root.style.transform = 'translateZ(0)';
+        void root.offsetWidth;
+        root.style.transform = '';
+      }
+    }
+    lightenDarkenColor(hex,amt){
+      if(!hex) return '#000000';
+      let c = hex.replace('#','');
+      if(c.length===3) c = c.split('').map(x=>x+x).join('');
+      const n = parseInt(c,16);
+      let r = (n>>16)+amt, g=((n>>8)&0x00FF)+amt, b=(n&0x0000FF)+amt;
+      r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
+      return `#${(r<<16|g<<8|b).toString(16).padStart(6,'0')}`;
+    }
+    debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+    escape(s){ return s ? String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]) : ''; }
+  }
+  const explorer = new BikeExplorer();
+  window.explorer = explorer;
+  </script>
+</body>
+</html>
